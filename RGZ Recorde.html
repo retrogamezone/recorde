@@ -1,0 +1,1115 @@
+<!DOCTYPE html>
+<html lang="pt-BR" class="h-full">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Retro Game Zone - Emulador Multi-Console & Telemetria</title>
+  
+  <!-- FAVICON OFICIAL -->
+  <link rel="icon" type="image/png" href="https://retrogamezone.github.io/RGZ.png">
+  
+  <!-- FONTES GOOGLE & TAILWIND CSS -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Chakra+Petch:ital,wght@0,400;0,600;0,700;1,400;1,700&family=Press+Start+2P&family=Share+Tech+Mono&display=swap" rel="stylesheet">
+  <script src="https://cdn.tailwindcss.com"></script>
+  
+  <!-- BIBLIOTECA JSZIP -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+
+  <style>
+    :root {
+      --bg-cyber: #090a10;
+      --panel-cyber: #111422;
+      --border-neon: #00f0ff;
+      --text-neon: #00f0ff;
+      --accent-pink: #ff007f;
+      --accent-yellow: #ffe600;
+      --accent-green: #00ff66;
+    }
+
+    html, body {
+      height: 100%;
+      overflow: hidden;
+      background-color: var(--bg-cyber);
+      color: #e2e8f0;
+      font-family: 'Chakra Petch', sans-serif;
+    }
+
+    body {
+      background-image: 
+        radial-gradient(circle at 50% 0%, rgba(0, 240, 255, 0.08) 0%, transparent 75%),
+        linear-gradient(rgba(17, 20, 34, 0.4) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(17, 20, 34, 0.4) 1px, transparent 1px);
+      background-size: 100% 100%, 20px 20px, 20px 20px;
+    }
+
+    .font-pixel { font-family: 'Press Start 2P', monospace; }
+    .font-mono-code { font-family: 'Share Tech Mono', monospace; }
+
+    .cyber-panel {
+      background: var(--panel-cyber);
+      border: 1px solid rgba(0, 240, 255, 0.2);
+      box-shadow: 0 0 15px rgba(0, 0, 0, 0.7), inset 0 0 15px rgba(0, 240, 255, 0.03);
+    }
+
+    .cyber-panel-header {
+      background: linear-gradient(90deg, rgba(0, 240, 255, 0.15) 0%, rgba(255, 0, 127, 0.05) 100%);
+      border-bottom: 1px solid rgba(0, 240, 255, 0.3);
+    }
+
+    /* DEGRADÊ ANIMADO COM AS CORES DO LOGO (AZUL, AMARELO E VERMELHO) */
+    @keyframes logoGradientAnimation {
+      0% { background-position: 0% 50%; }
+      50% { background-position: 100% 50%; }
+      100% { background-position: 0% 50%; }
+    }
+
+    .animated-logo-gradient {
+      background: linear-gradient(270deg, #00f0ff, #ffe600, #ff0055, #00f0ff);
+      background-size: 300% 300%;
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      animation: logoGradientAnimation 6s ease infinite;
+    }
+
+    .neon-btn-cyan {
+      background: rgba(0, 240, 255, 0.1);
+      border: 1px solid #00f0ff;
+      color: #00f0ff;
+      transition: all 0.2s ease;
+    }
+    .neon-btn-cyan:hover {
+      background: #00f0ff;
+      color: #090a10;
+      box-shadow: 0 0 12px #00f0ff;
+    }
+
+    .neon-btn-pink {
+      background: rgba(255, 0, 127, 0.1);
+      border: 1px solid #ff007f;
+      color: #ff007f;
+      transition: all 0.2s ease;
+    }
+    .neon-btn-pink:hover {
+      background: #ff007f;
+      color: #ffffff;
+      box-shadow: 0 0 12px #ff007f;
+    }
+
+    .badge-snes { background: rgba(147, 51, 234, 0.2); border: 1px solid #a855f7; color: #d8b4fe; }
+    .badge-nes { background: rgba(239, 68, 68, 0.2); border: 1px solid #ef4444; color: #fca5a5; }
+    .badge-genesis { background: rgba(59, 130, 246, 0.2); border: 1px solid #3b82f6; color: #93c5fd; }
+    .badge-gba { background: rgba(16, 185, 129, 0.2); border: 1px solid #10b981; color: #6ee7b7; }
+    .badge-n64 { background: rgba(245, 158, 11, 0.2); border: 1px solid #f59e0b; color: #fcd34d; }
+    .badge-psx { background: rgba(236, 72, 153, 0.2); border: 1px solid #ec4899; color: #fbcfe8; }
+    .badge-unknown { background: rgba(107, 114, 128, 0.2); border: 1px solid #6b7280; color: #d1d5db; }
+
+    .custom-scroll::-webkit-scrollbar { width: 4px; height: 4px; }
+    .custom-scroll::-webkit-scrollbar-track { background: #090a10; }
+    .custom-scroll::-webkit-scrollbar-thumb { background: rgba(0, 240, 255, 0.3); border-radius: 2px; }
+    .custom-scroll::-webkit-scrollbar-thumb:hover { background: #00f0ff; }
+
+    tr.delete-highlight {
+      background-color: rgba(220, 38, 38, 0.6) !important;
+      color: #ffffff !important;
+      border-color: #ef4444 !important;
+    }
+
+    @keyframes crown-bounce {
+      0%, 100% { transform: translateY(0) scale(1); filter: drop-shadow(0 0 4px rgba(255, 230, 0, 0.8)); }
+      50% { transform: translateY(-2px) scale(1.15); filter: drop-shadow(0 0 8px rgba(255, 230, 0, 1)); }
+    }
+    .crown-icon {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      animation: crown-bounce 1.8s infinite ease-in-out;
+      vertical-align: middle;
+      line-height: 1;
+    }
+  </style>
+</head>
+<body class="h-screen w-screen flex flex-col p-2 md:p-3 lg:p-4 gap-2 box-border relative">
+
+  <!-- CABEÇALHO SUPERIOR -->
+  <header class="cyber-panel px-3 py-2 rounded-lg flex items-center justify-between gap-3 shrink-0 border-b-2 border-cyan-500">
+    <div class="flex items-center gap-3">
+      <img src="https://retrogamezone.github.io/RGZ-Logo.png" alt="RGZ" class="w-8 h-8 object-contain drop-shadow-[0_0_6px_rgba(0,240,255,0.6)]">
+      <h1 class="text-sm md:text-base lg:text-lg font-bold font-pixel tracking-wider animated-logo-gradient">
+        RETRO GAME ZONE
+      </h1>
+
+      <!-- SPEEDRUN TIMER & BOTÃO DE REGISTRAR RECORDE -->
+      <div class="hidden sm:flex items-center gap-2 pl-3 border-l border-cyan-500/30">
+        <button id="btnToggleTimerMode" class="text-gray-400 hover:text-cyan-400 text-[10px] lg:text-xs font-mono-code hidden md:inline underline cursor-pointer" title="Clique para alternar entre Cronômetro e Timer Regressivo">
+          <span id="timerModeLabel">SPEEDRUN:</span>
+        </button>
+
+        <div class="relative flex items-center">
+          <span id="speedrunTimerDisplay" class="font-pixel text-xs md:text-sm lg:text-base text-yellow-400 tracking-wider cursor-pointer hover:text-cyan-300" title="Clique para editar o tempo">00:00:00</span>
+          <input type="text" id="inputTimerEdit" value="00:00:00" class="hidden w-32 bg-black border border-yellow-400 text-yellow-400 font-pixel text-xs lg:text-sm px-1.5 py-0.5 rounded focus:outline-none text-center">
+        </div>
+
+        <div class="flex items-center gap-1">
+          <button id="btnStartTimer" class="px-2 py-0.5 bg-green-500/20 border border-green-400 text-green-400 hover:bg-green-400 hover:text-black rounded text-[10px] lg:text-xs font-bold transition">PLAY</button>
+          <button id="btnPauseTimer" class="px-2 py-0.5 bg-yellow-500/20 border border-yellow-400 text-yellow-400 hover:bg-yellow-400 hover:text-black rounded text-[10px] lg:text-xs font-bold transition">PAUSE</button>
+          <button id="btnResetTimer" class="px-2 py-0.5 bg-red-500/20 border border-red-400 text-red-400 hover:bg-red-400 hover:text-black rounded text-[10px] lg:text-xs font-bold transition">RESET</button>
+        </div>
+
+        <!-- BOTÃO DE REGISTRAR RECORDE NO CABEÇALHO -->
+        <button id="btnSaveRecord" class="neon-btn-cyan font-bold px-3 py-1 rounded text-xs lg:text-sm flex items-center gap-1 shadow-[0_0_8px_rgba(0,240,255,0.2)] ml-2">
+          💾 REGISTRAR RECORDE
+        </button>
+      </div>
+    </div>
+
+    <!-- CONTROLES GLOBAIS -->
+    <div class="flex items-center gap-2">
+      <div id="gamepadStatus" class="hidden md:flex items-center gap-1 text-[10px] lg:text-xs font-mono-code px-2 py-1 bg-black/50 border border-gray-700 rounded text-gray-500" title="Status do Controle USB/Bluetooth">
+        <span>🎮</span> <span id="gamepadText">SEM CONTROLE</span>
+      </div>
+
+      <label class="cursor-pointer neon-btn-cyan font-bold px-3 py-1.5 rounded text-xs lg:text-sm flex items-center gap-1.5 shadow-[0_0_8px_rgba(0,240,255,0.2)]">
+        <span>📁 CARREGAR ROM</span>
+        <input type="file" id="romFileInput" accept=".zip,.7z,.rar,.sfc,.smc,.nes,.md,.gen,.smd,.bin,.gb,.gbc,.gba,.z64,.n64,.v64,.cue,.iso,.chd,.sms,.gg" class="hidden">
+      </label>
+
+      <button id="btnResetSession" class="neon-btn-pink font-bold px-2.5 py-1.5 rounded text-xs lg:text-sm flex items-center gap-1" title="Zerar Contadores">
+        🔄 ZERAR
+      </button>
+    </div>
+  </header>
+
+  <!-- ÁREA PRINCIPAL -->
+  <main class="flex-grow grid grid-cols-1 lg:grid-cols-12 gap-2 min-h-0">
+
+    <!-- COLUNA ESQUERDA: TELA DE EMULAÇÃO -->
+    <section class="lg:col-span-8 xl:col-span-9 flex flex-col min-h-0 h-full">
+      <div class="cyber-panel rounded-lg overflow-hidden flex flex-col h-full relative">
+        <div class="cyber-panel-header px-3 py-2 flex flex-wrap justify-between items-center text-xs lg:text-sm font-mono-code shrink-0 gap-2">
+          
+          <div class="flex items-center gap-2 min-w-0">
+            <span class="w-2.5 h-2.5 rounded-full bg-green-400 animate-pulse shrink-0"></span>
+            <span id="emulatorStatusText" class="text-cyan-400 font-bold truncate max-w-[180px] sm:max-w-xs md:max-w-sm">AGUARDANDO ROM...</span>
+          </div>
+          
+          <div class="flex items-center gap-2 shrink-0">
+            <div id="consoleBadgeContainer" class="hidden"></div>
+            
+            <div id="emulatorControls" class="hidden flex items-center gap-1.5">
+              <button onclick="saveGameState()" class="px-2.5 py-1 bg-blue-500/20 border border-blue-400 text-blue-300 hover:bg-blue-400 hover:text-black rounded text-xs font-bold font-mono-code transition">💾 SAVE</button>
+              <button onclick="loadGameState()" class="px-2.5 py-1 bg-purple-500/20 border border-purple-400 text-purple-300 hover:bg-purple-400 hover:text-black rounded text-xs font-bold font-mono-code transition">📂 LOAD</button>
+              <button id="btnRestartGame" class="px-2.5 py-1 bg-yellow-500/20 border border-yellow-300 hover:bg-yellow-400 hover:text-black rounded text-xs font-bold font-mono-code transition">🔄 REINICIAR</button>
+              <button id="btnQuitGame" class="px-2.5 py-1 bg-red-500/20 border border-red-400 text-red-400 hover:bg-red-400 hover:text-white rounded text-xs font-bold font-mono-code transition">🛑 ENCERRAR</button>
+            </div>
+          </div>
+        </div>
+
+        <div id="emulatorContainer" class="w-full flex-grow bg-black flex flex-col items-center justify-center relative overflow-hidden">
+          <div id="emulatorPlaceholder" class="text-center p-4 flex flex-col items-center gap-3">
+            <!-- LOGO CENTRAL DO EMULADOR 3X MAIOR (w-60 h-60) -->
+            <img src="https://retrogamezone.github.io/RGZ-Logo.png" alt="RGZ Logo" class="w-60 h-60 object-contain drop-shadow-[0_0_12px_rgba(0,240,255,0.6)] opacity-90 animate-pulse">
+            <p class="text-xs lg:text-sm text-gray-400 font-mono-code max-w-sm">
+              Abra seu arquivo de ROM ou selecione um pacote (.ZIP/.7Z) contendo jogos de NES, SNES, Genesis, GBA, N64 ou PS1.
+            </p>
+          </div>
+          <div id="ejsDiv" class="w-full h-full absolute inset-0 hidden"></div>
+        </div>
+      </div>
+    </section>
+
+    <!-- COLUNA DIREITA -->
+    <section class="lg:col-span-4 xl:col-span-3 flex flex-col min-h-0 h-full gap-2">
+      <div class="cyber-panel p-2 rounded-lg flex flex-col h-full min-h-0 justify-between overflow-hidden gap-2">
+        
+        <!-- 1. TOP 3 RECORDES -->
+        <div class="flex flex-col gap-1.5 shrink-0 bg-black/30 border border-yellow-500/30 rounded p-2">
+          <div class="flex justify-between items-center border-b border-yellow-500/30 pb-1">
+            <span class="font-pixel text-[10px] lg:text-xs text-yellow-400 flex items-center gap-1">🏆 TOP 3 RECORDES</span>
+            <button id="btnClearHistory" class="text-[10px] lg:text-xs text-red-400 hover:underline">LIMPAR</button>
+          </div>
+
+          <div class="flex items-center gap-1">
+            <label class="text-[10px] lg:text-xs text-gray-400 font-mono-code shrink-0">FILTRAR:</label>
+            <select id="selectGameFilter" onchange="renderLeaderboard()" class="w-full bg-black/80 border border-yellow-500/40 rounded px-1.5 py-1 text-[10px] lg:text-xs font-mono-code text-yellow-300 focus:outline-none cursor-pointer">
+              <option value="ALL">ALL (Todos os Jogos)</option>
+            </select>
+          </div>
+          
+          <div id="leaderboardCompact" class="flex flex-col gap-1.5 text-xs font-mono-code">
+            <div class="text-gray-500 text-[10px] text-center py-1">Sem pontuações registradas.</div>
+          </div>
+
+          <button onclick="openHistoryModal()" class="w-full py-1.5 bg-yellow-500/10 hover:bg-yellow-500/30 border border-yellow-500/40 text-yellow-300 font-pixel text-[9px] lg:text-[10px] rounded transition">
+            📜 VER HISTÓRICO EXPANDIDO
+          </button>
+        </div>
+
+        <!-- 2. TELEMETRIA MANUAL (COM ROLAGEM E ESPAÇO PARA 4 REPLAYS VISÍVEIS) -->
+        <div class="flex flex-col gap-1.5 flex-grow border-t border-cyan-500/20 pt-1.5 min-h-0 overflow-y-auto custom-scroll pr-1">
+          <div class="border-b border-cyan-500/30 pb-1 flex justify-between items-center shrink-0">
+            <h2 class="font-pixel text-[10px] lg:text-xs text-cyan-400 tracking-wide">TELEMETRIA & SCORE</h2>
+          </div>
+
+          <div class="bg-black/40 border border-cyan-500/30 rounded p-1.5 flex items-center justify-between gap-1 shrink-0">
+            <label class="text-[10px] lg:text-xs text-gray-400 font-mono-code shrink-0">JOGADOR:</label>
+            <input type="text" id="inputPlayerName" value="Jogador 1" class="w-full bg-black border border-cyan-500/40 rounded px-2 py-0.5 font-mono-code text-xs lg:text-sm text-cyan-300 focus:outline-none">
+          </div>
+
+          <!-- CONTADORES COM BOTÕES [-] VALOR [+] LADO A LADO -->
+          <div class="grid grid-cols-2 gap-1.5 my-0.5 shrink-0">
+            <!-- INIMIGOS -->
+            <div class="bg-black/40 border border-cyan-500/20 rounded p-1.5 flex items-center justify-between">
+              <span class="text-[9px] lg:text-[10px] font-bold text-cyan-400">INIMIGOS</span>
+              <div class="flex items-center gap-1.5">
+                <button onclick="updateCounter('enemies', -1)" class="w-5 h-5 bg-gray-800 hover:bg-gray-700 text-gray-300 font-bold rounded border border-gray-600/60 text-xs flex items-center justify-center transition">-</button>
+                <span id="counterEnemies" class="font-pixel text-xs lg:text-sm text-cyan-400 min-w-[18px] text-center">0</span>
+                <button onclick="updateCounter('enemies', 1)" class="w-5 h-5 bg-cyan-500/20 hover:bg-cyan-500 hover:text-black text-cyan-400 font-bold rounded border border-cyan-400/60 text-xs flex items-center justify-center transition">+</button>
+              </div>
+            </div>
+
+            <!-- VITÓRIAS -->
+            <div class="bg-black/40 border border-pink-500/20 rounded p-1.5 flex items-center justify-between">
+              <span class="text-[9px] lg:text-[10px] font-bold text-pink-400">VITÓRIAS</span>
+              <div class="flex items-center gap-1.5">
+                <button onclick="updateCounter('kos', -1)" class="w-5 h-5 bg-gray-800 hover:bg-gray-700 text-gray-300 font-bold rounded border border-gray-600/60 text-xs flex items-center justify-center transition">-</button>
+                <span id="counterKos" class="font-pixel text-xs lg:text-sm text-pink-400 min-w-[18px] text-center">0</span>
+                <button onclick="updateCounter('kos', 1)" class="w-5 h-5 bg-pink-500/20 hover:bg-pink-500 hover:text-white text-pink-400 font-bold rounded border border-pink-400/60 text-xs flex items-center justify-center transition">+</button>
+              </div>
+            </div>
+
+            <!-- CHEFÕES -->
+            <div class="bg-black/40 border border-yellow-500/20 rounded p-1.5 flex items-center justify-between">
+              <span class="text-[9px] lg:text-[10px] font-bold text-yellow-400">CHEFÕES</span>
+              <div class="flex items-center gap-1.5">
+                <button onclick="updateCounter('bosses', -1)" class="w-5 h-5 bg-gray-800 hover:bg-gray-700 text-gray-300 font-bold rounded border border-gray-600/60 text-xs flex items-center justify-center transition">-</button>
+                <span id="counterBosses" class="font-pixel text-xs lg:text-sm text-yellow-400 min-w-[18px] text-center">0</span>
+                <button onclick="updateCounter('bosses', 1)" class="w-5 h-5 bg-yellow-500/20 hover:bg-yellow-500 hover:text-black text-yellow-400 font-bold rounded border border-yellow-400/60 text-xs flex items-center justify-center transition">+</button>
+              </div>
+            </div>
+
+            <!-- FASES -->
+            <div class="bg-black/40 border border-green-500/20 rounded p-1.5 flex items-center justify-between">
+              <span class="text-[9px] lg:text-[10px] font-bold text-green-400">FASES</span>
+              <div class="flex items-center gap-1.5">
+                <button onclick="updateCounter('stages', -1)" class="w-5 h-5 bg-gray-800 hover:bg-gray-700 text-gray-300 font-bold rounded border border-gray-600/60 text-xs flex items-center justify-center transition">-</button>
+                <span id="counterStages" class="font-pixel text-xs lg:text-sm text-green-400 min-w-[18px] text-center">0</span>
+                <button onclick="updateCounter('stages', 1)" class="w-5 h-5 bg-green-500/20 hover:bg-green-500 hover:text-black text-green-400 font-bold rounded border border-green-400/60 text-xs flex items-center justify-center transition">+</button>
+              </div>
+            </div>
+          </div>
+
+          <div class="bg-black/40 border border-purple-500/30 rounded p-1.5 flex flex-col gap-1 shrink-0">
+            <div class="flex justify-between items-center">
+              <span class="text-[10px] lg:text-xs font-bold text-purple-400">PONTUAÇÃO (PTS)</span>
+              <div class="flex items-center gap-1">
+                <button onclick="addScore(100)" class="px-1.5 py-0.5 bg-purple-500/20 border border-purple-400/60 hover:bg-purple-500 hover:text-white rounded text-[9px] font-bold transition">+100</button>
+                <button onclick="addScore(1000)" class="px-1.5 py-0.5 bg-purple-500/20 border border-purple-400/60 hover:bg-purple-500 hover:text-white rounded text-[9px] font-bold transition">+1K</button>
+                <button onclick="addScore(10000)" class="px-1.5 py-0.5 bg-purple-500/20 border border-purple-400/60 hover:bg-purple-500 hover:text-white rounded text-[9px] font-bold transition">+10K</button>
+              </div>
+            </div>
+            <input type="number" id="inputScore" value="0" min="0" class="w-full bg-black border border-purple-500/60 rounded px-2 py-1 font-pixel text-xs lg:text-sm text-purple-300 focus:outline-none text-right tracking-wider shadow-inner">
+          </div>
+
+          <!-- 3. REPLAYS DA SESSÃO (4 VISÍVEIS EXATOS) -->
+          <div class="flex flex-col gap-1 border-t border-cyan-500/20 pt-1.5 shrink-0 pb-1">
+            <div class="flex justify-between items-center shrink-0">
+              <span class="text-[10px] lg:text-xs text-gray-400 font-mono-code">🎮 REPLAYS DA SESSÃO:</span>
+            </div>
+            <div id="quickReplayContainer" class="flex flex-col gap-1 overflow-y-auto custom-scroll pr-1 max-h-[145px]">
+              <span class="text-gray-600 text-[10px]">Nenhum jogo na sessão.</span>
+            </div>
+          </div>
+        </div>
+
+      </div>
+    </section>
+
+  </main>
+
+  <!-- MODAL DE NOTIFICAÇÃO / CONFIRMAÇÃO -->
+  <div id="systemModal" class="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 hidden flex items-center justify-center p-4">
+    <div class="cyber-panel p-5 rounded-lg border-2 border-cyan-400 max-w-md w-full shadow-[0_0_20px_rgba(0,240,255,0.4)] flex flex-col gap-4">
+      <div class="flex justify-between items-center border-b border-cyan-500/40 pb-2">
+        <h3 id="modalTitle" class="font-pixel text-sm text-cyan-400">SISTEMA RETRO GAME ZONE</h3>
+        <button onclick="closeModal()" class="text-gray-400 hover:text-white font-bold">✕</button>
+      </div>
+      <p id="modalMessage" class="font-mono-code text-sm text-gray-200 leading-relaxed"></p>
+      <div id="modalButtons" class="flex justify-end gap-2 pt-2">
+        <button id="btnModalOk" onclick="closeModal()" class="neon-btn-cyan px-4 py-1.5 rounded text-xs font-bold font-mono-code">OK</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- MODAL DE HISTÓRICO EXPANDIDO COM LOGO RGZ -->
+  <div id="historyModal" class="fixed inset-0 bg-black/85 backdrop-blur-md z-50 hidden flex items-center justify-center p-2 md:p-4">
+    <div class="cyber-panel p-3 md:p-5 rounded-lg border-2 border-yellow-500 w-full max-w-6xl max-h-[90vh] flex flex-col gap-3 shadow-[0_0_25px_rgba(255,230,0,0.3)] overflow-hidden">
+      <div class="flex justify-between items-center border-b border-yellow-500/40 pb-2 shrink-0">
+        <div class="flex items-center gap-2">
+          <img src="https://retrogamezone.github.io/RGZ-Logo.png" alt="RGZ Logo" class="w-6 h-6 object-contain drop-shadow-[0_0_4px_rgba(255,230,0,0.8)]">
+          <h3 class="font-pixel text-xs md:text-sm lg:text-base text-yellow-400 tracking-wider">HISTÓRICO EXPANDIDO DE RECORDES</h3>
+        </div>
+        <button onclick="closeHistoryModal()" class="text-gray-400 hover:text-white font-bold text-lg">✕</button>
+      </div>
+
+      <div class="flex justify-between items-center gap-2 shrink-0 font-mono-code text-sm">
+        <div class="flex items-center gap-2">
+          <label class="text-gray-400">FILTRAR JOGO:</label>
+          <select id="modalSelectGameFilter" onchange="renderExpandedLeaderboard()" class="bg-black border border-yellow-500/50 text-yellow-300 rounded px-2.5 py-1 focus:outline-none">
+            <option value="ALL">Todos os Jogos</option>
+          </select>
+        </div>
+        <button id="btnModalExportCSV" onclick="exportCSV()" class="neon-btn-cyan text-xs font-bold px-3 py-1.5 rounded">
+          📥 EXPORTAR CSV
+        </button>
+      </div>
+
+      <div class="flex-grow min-h-0 overflow-y-auto overflow-x-auto custom-scroll border border-yellow-500/20 rounded bg-black/50 p-1">
+        <table class="w-full text-left font-mono-code text-xs md:text-sm table-fixed min-w-[880px]">
+          <thead class="sticky top-0 bg-zinc-900 text-yellow-400 border-b border-yellow-500/40 font-pixel text-[10px] md:text-xs">
+            <tr>
+              <th class="p-3 w-[4%] text-center">#</th>
+              <th class="p-3 w-[15%] truncate">JOGADOR</th>
+              <th class="p-3 w-[15%] truncate">JOGO</th>
+              <th class="p-3 w-[13%] text-center truncate">CONSOLE</th>
+              <th class="p-3 w-[7%] text-center" title="Inimigos Derrotados">INIM.</th>
+              <th class="p-3 w-[7%] text-center" title="Vitórias / KOs">VIT.</th>
+              <th class="p-3 w-[7%] text-center" title="Chefões Derrotados">BOSS</th>
+              <th class="p-3 w-[7%] text-center" title="Fases Concluídas">FASE</th>
+              <th class="p-3 w-[13%] text-center whitespace-nowrap">TEMPO</th>
+              <th class="p-3 w-[12%] text-right" title="Pontuação Total">PTS</th>
+              <th class="p-3 w-[5%] text-center">DEL</th>
+            </tr>
+          </thead>
+          <tbody id="expandedLeaderboardBody" class="divide-y divide-gray-800 text-gray-200"></tbody>
+        </table>
+      </div>
+
+      <div class="flex justify-between items-center shrink-0 pt-1 border-t border-yellow-500/30">
+        <button id="btnConfirmDeleteSelected" onclick="deleteSelectedDirectly()" class="neon-btn-pink px-3.5 py-2 rounded text-xs lg:text-sm font-bold font-mono-code">
+          🗑️ EXCLUIR SELECIONADOS
+        </button>
+        <button onclick="closeHistoryModal()" class="px-5 py-2 bg-gray-800 hover:bg-gray-700 text-gray-300 rounded text-xs lg:text-sm font-bold font-mono-code transition">
+          FECHAR
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- LÓGICA JAVASCRIPT -->
+  <script>
+    const GOOGLE_SHEETS_WEB_APP_URL = "SUA_URL_DO_GOOGLE_APPS_SCRIPT_AQUI";
+
+    const appState = {
+      currentGame: "Nenhum Jogo Carregado",
+      currentSystem: "unknown",
+      currentBlob: null,
+      counters: { enemies: 0, kos: 0, bosses: 0, stages: 0, score: 0 },
+      timer: { seconds: 0, intervalId: null, isRunning: false, mode: 'stopwatch' },
+      records: [],
+      recentGames: []
+    };
+
+    const CORE_MAPPING = {
+      'nes': 'nes', 'fc': 'nes',
+      'sfc': 'snes', 'smc': 'snes',
+      'md': 'segaMD', 'gen': 'segaMD', 'smd': 'segaMD', 'bin': 'segaMD',
+      'gb': 'gb', 'gbc': 'gb', 'gba': 'gba',
+      'z64': 'n64', 'n64': 'n64', 'v64': 'n64',
+      'cue': 'psx', 'iso': 'psx', 'chd': 'psx', 'pbp': 'psx',
+      'sms': 'sms', 'gg': 'geargen'
+    };
+
+    const SYSTEM_NAMES = {
+      'snes': 'SUPER NINTENDO', 'nes': 'NINTENDO SYSTEM', 'segaMD': 'SEGA GENESIS',
+      'gb': 'GAME BOY', 'gba': 'GAME BOY ADVANCE', 'n64': 'NINTENDO 64',
+      'psx': 'PLAYSTATION', 'sms': 'MASTER SYSTEM', 'geargen': 'GAME GEAR',
+      'unknown': 'DESCONHECIDO'
+    };
+
+    const SYSTEM_KEYS_MAP = {
+      'SUPER NINTENDO': 'snes', 'NINTENDO SYSTEM': 'nes', 'SEGA GENESIS': 'segaMD',
+      'GAME BOY': 'gb', 'GAME BOY ADVANCE': 'gba', 'NINTENDO 64': 'n64',
+      'PLAYSTATION': 'psx', 'MASTER SYSTEM': 'sms', 'GAME GEAR': 'geargen'
+    };
+
+    const BADGE_STYLES = {
+      'snes': 'badge-snes', 'nes': 'badge-nes', 'segaMD': 'badge-genesis',
+      'gb': 'badge-gba', 'gba': 'badge-gba', 'n64': 'badge-n64', 'psx': 'badge-psx',
+      'sms': 'badge-genesis', 'geargen': 'badge-gba',
+      'unknown': 'badge-unknown'
+    };
+
+    let db;
+    function initIndexedDB() {
+      const request = indexedDB.open("RetroGameZoneDB", 5);
+      request.onupgradeneeded = (e) => {
+        db = e.target.result;
+        if (!db.objectStoreNames.contains("session_records")) {
+          db.createObjectStore("session_records", { keyPath: "id", autoIncrement: true });
+        }
+        if (!db.objectStoreNames.contains("game_saves")) {
+          db.createObjectStore("game_saves", { keyPath: "gameName" });
+        }
+      };
+      request.onsuccess = (e) => {
+        db = e.target.result;
+        loadSavedRecords();
+      };
+      request.onerror = () => {
+        loadSavedRecords();
+      };
+    }
+
+    function showModal(title, message, onConfirm = null, onCancel = null) {
+      document.getElementById('modalTitle').innerText = title;
+      document.getElementById('modalMessage').innerText = message;
+      const modalBtns = document.getElementById('modalButtons');
+
+      if (onConfirm) {
+        modalBtns.innerHTML = `
+          <button id="btnCancelAction" class="px-3 py-1 bg-gray-800 hover:bg-gray-700 rounded text-xs font-mono-code">CANCELAR</button>
+          <button id="btnConfirmAction" class="neon-btn-pink px-4 py-1 rounded text-xs font-bold font-mono-code">CONFIRMAR</button>
+        `;
+        document.getElementById('btnConfirmAction').onclick = () => { closeModal(); onConfirm(); };
+        document.getElementById('btnCancelAction').onclick = () => { closeModal(); if (onCancel) onCancel(); };
+      } else {
+        modalBtns.innerHTML = `<button onclick="closeModal()" class="neon-btn-cyan px-4 py-1.5 rounded text-xs font-bold font-mono-code">OK</button>`;
+      }
+      document.getElementById('systemModal').classList.remove('hidden');
+    }
+
+    function closeModal() {
+      document.getElementById('systemModal').classList.add('hidden');
+    }
+
+    // --- TIMER / SPEEDRUN ---
+    const timerDisplay = document.getElementById('speedrunTimerDisplay');
+    const timerInput = document.getElementById('inputTimerEdit');
+    const timerModeLabel = document.getElementById('timerModeLabel');
+
+    document.getElementById('btnToggleTimerMode').addEventListener('click', toggleTimerMode);
+
+    function toggleTimerMode() {
+      pauseTimer();
+      if (appState.timer.mode === 'stopwatch') {
+        appState.timer.mode = 'countdown';
+        timerModeLabel.innerText = 'TIMER REGRESSIVO:';
+      } else {
+        appState.timer.mode = 'stopwatch';
+        timerModeLabel.innerText = 'SPEEDRUN:';
+      }
+      resetTimer();
+    }
+
+    timerDisplay.addEventListener('click', () => {
+      pauseTimer();
+      timerDisplay.classList.add('hidden');
+      timerInput.classList.remove('hidden');
+      timerInput.value = timerDisplay.innerText;
+      timerInput.focus();
+    });
+
+    timerInput.addEventListener('blur', applyTimerEdit);
+    timerInput.addEventListener('keydown', (e) => { if (e.key === 'Enter') applyTimerEdit(); });
+
+    function applyTimerEdit() {
+      const val = timerInput.value.trim();
+      const parts = val.split(':').map(Number);
+      if (parts.length === 3 && !parts.some(isNaN)) {
+        appState.timer.seconds = (parts[0] * 3600) + (parts[1] * 60) + parts[2];
+      } else {
+        showModal("ERRO DE FORMATAÇÃO", "Use o formato HH:MM:SS.");
+      }
+      timerInput.classList.add('hidden');
+      timerDisplay.classList.remove('hidden');
+      updateTimerDisplay();
+    }
+
+    function startTimer() {
+      if (appState.timer.isRunning) return;
+      appState.timer.isRunning = true;
+      appState.timer.intervalId = setInterval(() => {
+        if (appState.timer.mode === 'stopwatch') {
+          appState.timer.seconds++;
+        } else {
+          if (appState.timer.seconds > 0) appState.timer.seconds--;
+          else { pauseTimer(); showModal("⏰ TEMPO ESGOTADO!", "O timer regressivo chegou a zero."); }
+        }
+        updateTimerDisplay();
+      }, 1000);
+    }
+
+    function pauseTimer() {
+      appState.timer.isRunning = false;
+      clearInterval(appState.timer.intervalId);
+    }
+
+    function resetTimer() {
+      pauseTimer();
+      appState.timer.seconds = 0;
+      updateTimerDisplay();
+    }
+
+    function updateTimerDisplay() {
+      const hrs = String(Math.floor(appState.timer.seconds / 3600)).padStart(2, '0');
+      const mins = String(Math.floor((appState.timer.seconds % 3600) / 60)).padStart(2, '0');
+      const secs = String(appState.timer.seconds % 60).padStart(2, '0');
+      timerDisplay.innerText = `${hrs}:${mins}:${secs}`;
+    }
+
+    document.getElementById('btnStartTimer').addEventListener('click', startTimer);
+    document.getElementById('btnPauseTimer').addEventListener('click', pauseTimer);
+    document.getElementById('btnResetTimer').addEventListener('click', resetTimer);
+
+    // --- GAMEPAD ---
+    window.addEventListener("gamepadconnected", (e) => {
+      const statusDiv = document.getElementById('gamepadStatus');
+      const textSpan = document.getElementById('gamepadText');
+      statusDiv.classList.remove('hidden');
+      statusDiv.classList.add('border-green-500/50', 'text-green-400');
+      textSpan.innerText = e.gamepad.id.substring(0, 15).toUpperCase();
+    });
+
+    window.addEventListener("gamepaddisconnected", () => {
+      document.getElementById('gamepadStatus').classList.add('hidden');
+    });
+
+    // --- SAVE & LOAD STATES ---
+    async function saveGameState() {
+      if (!window.EJS_emulator || !appState.currentGame) return;
+      try {
+        const stateData = await window.EJS_emulator.gameManager.getState();
+        const dataArr = Array.from(stateData);
+        if (db) {
+          const tx = db.transaction("game_saves", "readwrite");
+          tx.objectStore("game_saves").put({ gameName: appState.currentGame, data: dataArr, timestamp: new Date() });
+        }
+        localStorage.setItem(`rgz_save_${appState.currentGame}`, JSON.stringify(dataArr));
+        showModal("STATE SALVO", `Progresso do jogo "${appState.currentGame}" salvo com sucesso!`);
+      } catch (err) {
+        showModal("ERRO", "Não foi possível gerar o Save State no emulador.");
+      }
+    }
+
+    async function loadGameState() {
+      if (!window.EJS_emulator || !appState.currentGame) return;
+      const restoreState = (dataArray) => {
+        try {
+          window.EJS_emulator.gameManager.loadState(new Uint8Array(dataArray));
+          showModal("STATE CARREGADO", `Estado salvo restaurado.`);
+        } catch (e) {
+          showModal("ERRO", "Falha ao carregar o estado do jogo.");
+        }
+      };
+
+      if (db) {
+        const tx = db.transaction("game_saves", "readonly");
+        const req = tx.objectStore("game_saves").get(appState.currentGame);
+        req.onsuccess = () => {
+          if (req.result && req.result.data) {
+            restoreState(req.result.data);
+            return;
+          }
+          fallbackLoad();
+        };
+        req.onerror = fallbackLoad;
+      } else {
+        fallbackLoad();
+      }
+
+      function fallbackLoad() {
+        const localData = localStorage.getItem(`rgz_save_${appState.currentGame}`);
+        if (localData) restoreState(JSON.parse(localData));
+        else showModal("AVISO", "Nenhum Save State localizado.");
+      }
+    }
+
+    // --- CARREGAMENTO DE ROMS SEM RECARREGAR A PÁGINA ---
+    document.getElementById('romFileInput').addEventListener('change', async function(e) {
+      const file = e.target.files[0];
+      if (!file) return;
+
+      const fileName = file.name.toLowerCase();
+      document.getElementById('emulatorStatusText').innerText = "PROCESSANDO ARQUIVO...";
+
+      let selectedCore = null;
+      let finalRomBlob = file;
+      let detectedGameName = file.name.replace(/\.[^/.]+$/, "");
+
+      if (fileName.endsWith('.zip')) {
+        try {
+          const zip = new JSZip();
+          await zip.loadAsync(file);
+          let internalRomFile = null;
+          let internalExt = "";
+
+          zip.forEach((relativePath, zipEntry) => {
+            if (!zipEntry.dir) {
+              const ext = relativePath.split('.').pop().toLowerCase();
+              if (CORE_MAPPING[ext] && !internalRomFile) {
+                internalRomFile = zipEntry;
+                internalExt = ext;
+              }
+            }
+          });
+
+          if (internalRomFile) {
+            selectedCore = CORE_MAPPING[internalExt];
+            detectedGameName = internalRomFile.name.split('/').pop().replace(/\.[^/.]+$/, "");
+            finalRomBlob = await internalRomFile.async("blob");
+          } else {
+            selectedCore = 'snes';
+          }
+        } catch (err) {
+          selectedCore = 'snes';
+        }
+      } else {
+        const ext = fileName.split('.').pop().toLowerCase();
+        selectedCore = CORE_MAPPING[ext] || 'snes';
+      }
+
+      appState.currentGame = detectedGameName;
+      appState.currentSystem = selectedCore;
+      appState.currentBlob = finalRomBlob;
+
+      addRecentGame(detectedGameName, selectedCore, finalRomBlob);
+      updateConsoleBadge(selectedCore);
+      launchEmulator(finalRomBlob, selectedCore);
+    });
+
+    function destroyEmulatorInstance() {
+      pauseTimer();
+
+      try {
+        if (window.EJS_emulator && typeof window.EJS_emulator.destroy === 'function') {
+          window.EJS_emulator.destroy();
+        } else if (window.EJS_emulator && typeof window.EJS_emulator.pause === 'function') {
+          window.EJS_emulator.pause();
+        }
+      } catch (err) {}
+
+      if (window.EJS_emulator && window.EJS_emulator.audioContext) {
+        try { window.EJS_emulator.audioContext.close(); } catch (e) {}
+      }
+
+      const ejsDiv = document.getElementById('ejsDiv');
+      if (ejsDiv) {
+        ejsDiv.querySelectorAll('audio, video').forEach(media => {
+          media.pause();
+          media.src = '';
+          media.load();
+        });
+        ejsDiv.innerHTML = '';
+        ejsDiv.classList.add('hidden');
+      }
+
+      document.querySelectorAll('script[src*="emulatorjs"], script[src*="loader.js"]').forEach(s => s.remove());
+
+      delete window.EJS_player;
+      delete window.EJS_core;
+      delete window.EJS_gameName;
+      delete window.EJS_color;
+      delete window.EJS_startOnLoaded;
+      delete window.EJS_pathtodata;
+      delete window.EJS_gameUrl;
+      delete window.EJS_emulator;
+    }
+
+    function launchEmulator(romBlob, core) {
+      destroyEmulatorInstance();
+
+      document.getElementById('emulatorPlaceholder').classList.add('hidden');
+      const ejsDiv = document.getElementById('ejsDiv');
+      ejsDiv.classList.remove('hidden');
+      ejsDiv.innerHTML = '<div id="game" class="w-full h-full"></div>';
+
+      document.getElementById('emulatorStatusText').innerText = `RODANDO: ${appState.currentGame.toUpperCase()}`;
+      document.getElementById('emulatorControls').classList.remove('hidden');
+
+      const romBlobUrl = URL.createObjectURL(romBlob);
+
+      window.EJS_player = '#game';
+      window.EJS_core = core;
+      window.EJS_gameName = appState.currentGame;
+      window.EJS_color = '#00f0ff';
+      window.EJS_startOnLoaded = true;
+      window.EJS_pathtodata = 'https://cdn.emulatorjs.org/stable/data/';
+      window.EJS_gameUrl = romBlobUrl;
+
+      const script = document.createElement('script');
+      script.src = 'https://cdn.emulatorjs.org/stable/data/loader.js';
+      document.body.appendChild(script);
+
+      startTimer();
+    }
+
+    document.getElementById('btnRestartGame').addEventListener('click', function() {
+      if (appState.currentBlob && appState.currentSystem) {
+        launchEmulator(appState.currentBlob, appState.currentSystem);
+      }
+    });
+
+    document.getElementById('btnQuitGame').addEventListener('click', function() {
+      showModal("ENCERRAR EMULADOR", "Deseja realmente encerrar a execução do jogo atual?", () => {
+        destroyEmulatorInstance();
+        document.getElementById('emulatorPlaceholder').classList.remove('hidden');
+        document.getElementById('emulatorStatusText').innerText = "AGUARDANDO ROM...";
+        document.getElementById('emulatorControls').classList.add('hidden');
+        document.getElementById('consoleBadgeContainer').classList.add('hidden');
+        appState.currentGame = "Nenhum Jogo Carregado";
+        appState.currentBlob = null;
+      });
+    });
+
+    function updateConsoleBadge(core) {
+      const container = document.getElementById('consoleBadgeContainer');
+      container.classList.remove('hidden');
+      const styleClass = BADGE_STYLES[core] || BADGE_STYLES['unknown'];
+      const systemName = SYSTEM_NAMES[core] || 'RETRO';
+
+      container.innerHTML = `
+        <span class="px-2 py-0.5 rounded text-[10px] lg:text-xs font-bold font-mono-code border ${styleClass}">
+          🎮 ${systemName}
+        </span>
+      `;
+    }
+
+    // --- REPLAYS DA SESSÃO COM CORES DE CONSOLE ---
+    function addRecentGame(name, system, blob) {
+      const index = appState.recentGames.findIndex(g => g.name === name);
+      if (index !== -1) appState.recentGames.splice(index, 1);
+      appState.recentGames.unshift({ name, system, blob });
+      renderRecentGames();
+    }
+
+    function renderRecentGames() {
+      const container = document.getElementById('quickReplayContainer');
+      container.innerHTML = "";
+
+      if (appState.recentGames.length === 0) {
+        container.innerHTML = '<span class="text-gray-600 text-[10px]">Nenhum jogo na sessão.</span>';
+        return;
+      }
+
+      appState.recentGames.forEach(g => {
+        const coreKey = g.system;
+        const badgeStyle = BADGE_STYLES[coreKey] || 'badge-unknown';
+        const sysFullName = SYSTEM_NAMES[coreKey] || 'RETRO';
+
+        const btn = document.createElement('button');
+        btn.className = "w-full text-left px-2 py-1.5 bg-cyan-500/10 border border-cyan-500/20 hover:bg-cyan-500 hover:text-black text-cyan-300 rounded font-mono-code text-[10px] lg:text-xs truncate transition flex justify-between items-center shrink-0";
+        btn.innerHTML = `<span class="truncate">▶ ${g.name}</span> <span class="px-1.5 py-0.2 rounded text-[7.5px] font-bold border ${badgeStyle} shrink-0 ml-1">${sysFullName}</span>`;
+        btn.onclick = () => {
+          appState.currentGame = g.name;
+          appState.currentSystem = g.system;
+          appState.currentBlob = g.blob;
+          updateConsoleBadge(g.system);
+          launchEmulator(g.blob, g.system);
+        };
+        container.appendChild(btn);
+      });
+    }
+
+    // --- CONTADORES & TELEMETRIA ---
+    function updateCounter(type, delta) {
+      if (appState.counters[type] !== undefined) {
+        appState.counters[type] = Math.max(0, appState.counters[type] + delta);
+        const elId = `counter${type.charAt(0).toUpperCase() + type.slice(1)}`;
+        document.getElementById(elId).innerText = appState.counters[type];
+      }
+    }
+
+    function addScore(value) {
+      const input = document.getElementById('inputScore');
+      let current = parseInt(input.value, 10) || 0;
+      current += value;
+      input.value = current;
+      appState.counters.score = current;
+    }
+
+    document.getElementById('inputScore').addEventListener('input', function(e) {
+      appState.counters.score = parseInt(e.target.value, 10) || 0;
+    });
+
+    // --- SALVAR REGISTROS DE RECORDES ---
+    document.getElementById('btnSaveRecord').addEventListener('click', async function() {
+      const playerName = document.getElementById('inputPlayerName').value.trim() || "Jogador 1";
+      const totalScore = parseInt(document.getElementById('inputScore').value, 10) || 0;
+      appState.counters.score = totalScore;
+
+      const now = new Date();
+      const record = {
+        id: Date.now(),
+        player: playerName,
+        game: appState.currentGame,
+        system: SYSTEM_NAMES[appState.currentSystem] || 'RETRO',
+        systemKey: appState.currentSystem,
+        enemies: appState.counters.enemies,
+        kos: appState.counters.kos,
+        bosses: appState.counters.bosses,
+        stages: appState.counters.stages,
+        score: totalScore,
+        durationSeconds: appState.timer.seconds,
+        duration: document.getElementById('speedrunTimerDisplay').innerText,
+        timestamp: `${now.toLocaleDateString('pt-BR')} ${now.toLocaleTimeString('pt-BR')}`
+      };
+
+      appState.records.push(record);
+      localStorage.setItem("rgz_records_backup", JSON.stringify(appState.records));
+
+      if (db) {
+        try {
+          const tx = db.transaction("session_records", "readwrite");
+          tx.objectStore("session_records").add(record);
+        } catch (e) {}
+      }
+
+      updateGameFilterDropdowns();
+      renderLeaderboard();
+      showModal("SUCESSO", "Partida salva no Histórico de Recordes!");
+    });
+
+    function loadSavedRecords() {
+      if (db) {
+        const tx = db.transaction("session_records", "readonly");
+        const request = tx.objectStore("session_records").getAll();
+        request.onsuccess = () => {
+          if (request.result && request.result.length > 0) {
+            appState.records = request.result;
+          } else {
+            loadLocalStorageRecords();
+          }
+          updateGameFilterDropdowns();
+          renderLeaderboard();
+        };
+        request.onerror = () => loadLocalStorageRecords();
+      } else {
+        loadLocalStorageRecords();
+      }
+    }
+
+    function loadLocalStorageRecords() {
+      const saved = localStorage.getItem("rgz_records_backup");
+      if (saved) {
+        try { appState.records = JSON.parse(saved); } catch(e){}
+      }
+      updateGameFilterDropdowns();
+      renderLeaderboard();
+    }
+
+    function updateGameFilterDropdowns() {
+      const uniqueGames = [...new Set(appState.records.map(r => r.game))].filter(Boolean);
+      const selectMain = document.getElementById('selectGameFilter');
+      const selectModal = document.getElementById('modalSelectGameFilter');
+      const optionsHtml = `<option value="ALL">ALL (Todos os Jogos)</option>` + 
+        uniqueGames.map(g => `<option value="${g}">${g}</option>`).join('');
+      selectMain.innerHTML = optionsHtml;
+      selectModal.innerHTML = optionsHtml;
+    }
+
+    function getGameTopRecordMap(records) {
+      const topMap = {};
+      records.forEach(r => {
+        if (!topMap[r.game] || r.score > topMap[r.game].score) {
+          topMap[r.game] = r;
+        }
+      });
+      return topMap;
+    }
+
+    function renderLeaderboard() {
+      const container = document.getElementById('leaderboardCompact');
+      const selectedGameFilter = document.getElementById('selectGameFilter').value;
+      container.innerHTML = "";
+
+      let filtered = appState.records;
+      if (selectedGameFilter !== "ALL") {
+        filtered = filtered.filter(r => r.game === selectedGameFilter);
+      }
+
+      if (filtered.length === 0) {
+        container.innerHTML = `<div class="text-gray-500 text-[10px] text-center py-1">Sem pontuações registradas.</div>`;
+        return;
+      }
+
+      const gameTopMap = getGameTopRecordMap(appState.records);
+      const recordsSorted = [...filtered].sort((a, b) => b.score - a.score);
+
+      recordsSorted.slice(0, 3).forEach((r, idx) => {
+        const isGameRecordHolder = gameTopMap[r.game] && gameTopMap[r.game].id === r.id;
+        const isOverallTop1 = idx === 0;
+
+        const coreKey = r.systemKey || SYSTEM_KEYS_MAP[r.system] || 'unknown';
+        const badgeStyle = BADGE_STYLES[coreKey] || 'badge-unknown';
+
+        const card = document.createElement('div');
+        card.className = isOverallTop1 
+          ? "bg-gradient-to-r from-yellow-500/20 via-black/60 to-yellow-500/10 border border-yellow-400/60 rounded p-2 flex flex-col gap-1 relative shrink-0"
+          : "bg-black/40 border border-cyan-500/20 rounded p-2 flex flex-col gap-1 relative hover:border-cyan-500/40 transition shrink-0";
+
+        card.innerHTML = `
+          <!-- PRIMEIRA LINHA: Jogador + Jogo + Tempo -->
+          <div class="flex items-center justify-between gap-1 border-b border-gray-800/80 pb-1">
+            <div class="flex items-center gap-1.5 truncate">
+              <span class="font-bold inline-flex items-center gap-1 ${isOverallTop1 ? 'text-yellow-300 font-pixel text-[10px] lg:text-xs' : 'text-cyan-300 text-xs lg:text-sm'} shrink-0">
+                ${isGameRecordHolder ? '<span class="crown-icon text-xs lg:text-sm" title="Recordista deste jogo">👑</span>' : `<span>#${idx + 1}</span>`}
+                <span class="truncate">${r.player}</span>
+              </span>
+              <span class="text-gray-300 text-[10px] lg:text-xs truncate font-semibold" title="${r.game}">- ${r.game}</span>
+            </div>
+            <span class="text-green-400 font-pixel text-xs lg:text-sm font-bold tracking-tight shrink-0">${r.duration || '00:00:00'}</span>
+          </div>
+          
+          <!-- SEGUNDA LINHA: Console Colorido + Telemetria Resumida -->
+          <div class="flex items-center justify-between text-[9px] lg:text-[10px] font-mono-code text-gray-300 pt-0.5">
+            <span class="px-1.5 py-0.5 rounded text-[8.5px] lg:text-[9.5px] font-bold border ${badgeStyle} shrink-0">${r.system}</span>
+            <div class="flex items-center gap-2.5 truncate">
+              <span title="Inimigos" class="text-cyan-300">INI:${r.enemies}</span>
+              <span title="Vitórias/KOs" class="text-pink-300">VIT:${r.kos}</span>
+              <span title="Chefes" class="text-yellow-300">BOS:${r.bosses}</span>
+              <span title="Fases" class="text-green-300">FAS:${r.stages}</span>
+              <span title="Pontuação" class="text-purple-300 font-bold font-pixel text-[9px] lg:text-[10px]">${r.score}PTS</span>
+            </div>
+          </div>
+        `;
+        container.appendChild(card);
+      });
+    }
+
+    function openHistoryModal() {
+      renderExpandedLeaderboard();
+      document.getElementById('historyModal').classList.remove('hidden');
+    }
+
+    function closeHistoryModal() {
+      document.getElementById('historyModal').classList.add('hidden');
+    }
+
+    function renderExpandedLeaderboard() {
+      const tbody = document.getElementById('expandedLeaderboardBody');
+      const selectedFilter = document.getElementById('modalSelectGameFilter').value;
+      tbody.innerHTML = "";
+
+      let filtered = appState.records;
+      if (selectedFilter !== "ALL") filtered = filtered.filter(r => r.game === selectedFilter);
+
+      if (filtered.length === 0) {
+        tbody.innerHTML = `<tr><td colspan="11" class="p-4 text-center text-gray-500 text-sm">Nenhum registro encontrado.</td></tr>`;
+        return;
+      }
+
+      const gameTopMap = getGameTopRecordMap(appState.records);
+      const recordsSorted = [...filtered].sort((a, b) => b.score - a.score);
+
+      recordsSorted.forEach((r, idx) => {
+        const isGameRecordHolder = gameTopMap[r.game] && gameTopMap[r.game].id === r.id;
+        const coreKey = r.systemKey || SYSTEM_KEYS_MAP[r.system] || 'unknown';
+        const badgeStyle = BADGE_STYLES[coreKey] || 'badge-unknown';
+
+        const tr = document.createElement('tr');
+        tr.className = (idx % 2 === 0 ? "bg-black/30" : "bg-black/60") + " hover:bg-yellow-500/10 transition-colors border-b border-gray-800/40 text-xs md:text-sm lg:text-base";
+        tr.dataset.recordId = r.id;
+        tr.innerHTML = `
+          <td class="p-3 font-pixel text-yellow-400 text-center">${idx + 1}</td>
+          <td class="p-3 font-bold text-cyan-300 truncate">
+            <span class="inline-flex items-center gap-1.5">
+              ${isGameRecordHolder ? '<span class="crown-icon text-sm shrink-0" title="Recordista deste jogo">👑</span>' : ''}
+              <span class="truncate align-middle">${r.player}</span>
+            </span>
+          </td>
+          <td class="p-3 truncate font-semibold text-gray-200">${r.game}</td>
+          <td class="p-3 text-center truncate">
+            <span class="px-2 py-0.5 rounded text-[10px] lg:text-xs font-bold border ${badgeStyle} inline-block">${r.system}</span>
+          </td>
+          <td class="p-3 text-center text-cyan-400 font-bold">${r.enemies}</td>
+          <td class="p-3 text-center text-pink-400 font-bold">${r.kos}</td>
+          <td class="p-3 text-center text-yellow-400 font-bold">${r.bosses}</td>
+          <td class="p-3 text-center text-green-400 font-bold">${r.stages}</td>
+          <td class="p-3 text-center font-pixel text-xs lg:text-sm text-green-400 whitespace-nowrap">${r.duration || '00:00:00'}</td>
+          <td class="p-3 text-right font-pixel text-purple-300 truncate font-bold text-xs lg:text-sm">${r.score}</td>
+          <td class="p-3 text-center">
+            <input type="checkbox" class="delete-checkbox accent-red-500 w-4 h-4 cursor-pointer align-middle" title="Marque para excluir">
+          </td>
+        `;
+
+        const checkbox = tr.querySelector('.delete-checkbox');
+        checkbox.addEventListener('mouseenter', () => tr.classList.add('delete-highlight'));
+        checkbox.addEventListener('mouseleave', () => { if (!checkbox.checked) tr.classList.remove('delete-highlight'); });
+        checkbox.addEventListener('change', () => {
+          if (checkbox.checked) tr.classList.add('delete-highlight');
+          else tr.classList.remove('delete-highlight');
+        });
+        tbody.appendChild(tr);
+      });
+    }
+
+    function deleteSelectedDirectly() {
+      const selectedCheckboxes = document.querySelectorAll('#expandedLeaderboardBody .delete-checkbox:checked');
+      if (selectedCheckboxes.length === 0) {
+        showModal("AVISO", "Nenhum registro selecionado.");
+        return;
+      }
+      const idsToDelete = Array.from(selectedCheckboxes).map(cb => parseInt(cb.closest('tr').dataset.recordId, 10));
+
+      if (db) {
+        const tx = db.transaction("session_records", "readwrite");
+        idsToDelete.forEach(id => tx.objectStore("session_records").delete(id));
+      }
+
+      appState.records = appState.records.filter(r => !idsToDelete.includes(r.id));
+      localStorage.setItem("rgz_records_backup", JSON.stringify(appState.records));
+      updateGameFilterDropdowns();
+      renderLeaderboard();
+      renderExpandedLeaderboard();
+    }
+
+    document.getElementById('btnResetSession').addEventListener('click', function() {
+      showModal("ZERAR PAINEL", "Zerar todos os contadores da sessão atual?", () => {
+        appState.counters = { enemies: 0, kos: 0, bosses: 0, stages: 0, score: 0 };
+        document.getElementById('counterEnemies').innerText = "0";
+        document.getElementById('counterKos').innerText = "0";
+        document.getElementById('counterBosses').innerText = "0";
+        document.getElementById('counterStages').innerText = "0";
+        document.getElementById('inputScore').value = "0";
+        resetTimer();
+      });
+    });
+
+    document.getElementById('btnClearHistory').addEventListener('click', function() {
+      showModal("LIMPAR HISTÓRICO", "Deseja apagar todo o histórico de pontuações?", () => {
+        if (db) {
+          try { tx = db.transaction("session_records", "readwrite"); tx.objectStore("session_records").clear(); } catch(e){}
+        }
+        appState.records = [];
+        localStorage.removeItem("rgz_records_backup");
+        updateGameFilterDropdowns();
+        renderLeaderboard();
+        renderExpandedLeaderboard();
+      });
+    });
+
+    function exportCSV() {
+      if (appState.records.length === 0) {
+        showModal("AVISO", "Não existem registros para exportar.");
+        return;
+      }
+      let csv = "Jogador,Jogo,Console,Inimigos,KOs,Bosses,Fases,Pontos,Tempo,Data\n";
+      appState.records.forEach(r => {
+        csv += `"${r.player}","${r.game}","${r.system}",${r.enemies},${r.kos},${r.bosses},${r.stages},${r.score},"${r.duration}","${r.timestamp}"\n`;
+      });
+      const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `RGZ_Leaderboard_${Date.now()}.csv`;
+      a.click();
+    }
+
+    window.addEventListener('DOMContentLoaded', () => {
+      initIndexedDB();
+    });
+  </script>
+</body>
+</html>
